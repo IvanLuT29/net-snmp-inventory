@@ -11,6 +11,7 @@ __min_python__ = (3, 10)
 
 # Importing libraries
 from copy import deepcopy
+from concurrent.futures import ThreadPoolExecutor
 from os import path, makedirs
 from sys import version_info, exit
 from math import modf
@@ -36,6 +37,7 @@ dirName = path.dirname(path.realpath(__file__))
 pathDelimiter = "\\" if platform.system() == "Windows" else "/"
 
 # Parsing the arguments
+
 argParser = ArgumentParser(prog = scriptName,
 	description = "NetSNMP Inventory Tool: utility for network equipment discovery & audit (v" + __version__ + " by " + __author__ + ").")
 argParser.add_argument("-r", "--net", required=True, type=str, metavar="192.0.2.0/24", dest="netAddress",
@@ -75,34 +77,48 @@ argParser.add_argument("-fu", "--force_oui_update", action="store_true", dest="f
 scriptArgs = argParser.parse_args()
 
 # Processing input data
-try:
-	scanAddress = IPv4Network(scriptArgs.netAddress)
-except ValueError:
-	print("\nNetwork address is incorrect!\n")
-	exit()
-reportEmptyValue = scriptArgs.reportEmptyValue
-csvReportDelimeter = scriptArgs.csvReportDelimeter
-snmpPort = scriptArgs.snmpPort
-snmpIterMaxCount = scriptArgs.snmpIterMaxCount
-snmpRetriesCount = scriptArgs.snmpRetriesCount
-snmpTimeout = scriptArgs.snmpTimeout
-snmpUsername = scriptArgs.snmpUsername
-snmpAuthProtoDict = {"none" : usmNoAuthProtocol, "md5" : usmHMACMD5AuthProtocol,
-					 "sha1" : usmHMACSHAAuthProtocol, "sha224" : usmHMAC128SHA224AuthProtocol,
-					 "sha256" : usmHMAC192SHA256AuthProtocol, "sha384" : usmHMAC256SHA384AuthProtocol,
-					 "sha512" : usmHMAC384SHA512AuthProtocol}
-snmpAuthProtocol = snmpAuthProtoDict[scriptArgs.snmpAuthProtocol]
-snmpAuthKey = scriptArgs.snmpAuthKey
-snmpPrivProtoDict = {"none" : usmNoPrivProtocol, "des" : usmDESPrivProtocol,
-					 "3des" : usm3DESEDEPrivProtocol, "aes128" : usmAesCfb128Protocol,
-					 "aes192" : usmAesCfb192Protocol, "aes192b" : usmAesBlumenthalCfb192Protocol,
-					 "aes256" : usmAesCfb256Protocol, "aes256b" : usmAesBlumenthalCfb256Protocol}
-snmpPrivProtocol = snmpPrivProtoDict[scriptArgs.snmpPrivProtocol]
-snmpPrivKey = scriptArgs.snmpPrivKey
-ignorePingFlag = scriptArgs.ignorePingFlag
-verbScanProgressFlag = scriptArgs.verbScanProgressFlag
-scanResultsOutputFlag = scriptArgs.scanResultsOutputFlag
-forceOUIUpdateFlag = scriptArgs.forceOUIUpdateFlag
+def process_input(scriptArgs):
+    try:
+        scanAddress = IPv4Network(scriptArgs.netAddress)
+    except ValueError:
+        print("\nNetwork address is incorrect!\n")
+        exit()
+    reportEmptyValue = scriptArgs.reportEmptyValue
+    csvReportDelimeter = scriptArgs.csvReportDelimeter
+    snmpPort = scriptArgs.snmpPort
+    snmpIterMaxCount = scriptArgs.snmpIterMaxCount
+    snmpRetriesCount = scriptArgs.snmpRetriesCount
+    snmpTimeout = scriptArgs.snmpTimeout
+    snmpUsername = scriptArgs.snmpUsername
+    snmpAuthProtoDict = {"none" : usmNoAuthProtocol, "md5" : usmHMACMD5AuthProtocol,
+                         "sha1" : usmHMACSHAAuthProtocol, "sha224" : usmHMAC128SHA224AuthProtocol,
+                         "sha256" : usmHMAC192SHA256AuthProtocol, "sha384" : usmHMAC256SHA384AuthProtocol,
+                         "sha512" : usmHMAC384SHA512AuthProtocol}
+    snmpAuthProtocol = snmpAuthProtoDict[scriptArgs.snmpAuthProtocol]
+    snmpAuthKey = scriptArgs.snmpAuthKey
+    snmpPrivProtoDict = {"none" : usmNoPrivProtocol, "des" : usmDESPrivProtocol,
+                         "3des" : usm3DESEDEPrivProtocol, "aes128" : usmAesCfb128Protocol,
+                         "aes192" : usmAesCfb192Protocol, "aes192b" : usmAesBlumenthalCfb192Protocol,
+                         "aes256" : usmAesCfb256Protocol, "aes256b" : usmAesBlumenthalCfb256Protocol}
+    snmpPrivProtocol = snmpPrivProtoDict[scriptArgs.snmpPrivProtocol]
+    snmpPrivKey = scriptArgs.snmpPrivKey
+    ignorePingFlag = scriptArgs.ignorePingFlag
+    verbScanProgressFlag = scriptArgs.verbScanProgressFlag
+    scanResultsOutputFlag = scriptArgs.scanResultsOutputFlag
+    forceOUIUpdateFlag = scriptArgs.forceOUIUpdateFlag
+    return (scanAddress, reportEmptyValue, csvReportDelimeter, snmpPort, snmpIterMaxCount,
+            snmpRetriesCount, snmpTimeout, snmpUsername, snmpAuthProtocol, snmpAuthKey,
+            snmpPrivProtocol, snmpPrivKey, ignorePingFlag, verbScanProgressFlag,
+            scanResultsOutputFlag, forceOUIUpdateFlag)
+
+# Обработка ввода данных с использованием многопоточности
+def main():
+    args = parse_args()
+    with ThreadPoolExecutor() as executor:
+        scanAddress, reportEmptyValue, csvReportDelimeter, snmpPort, snmpIterMaxCount, \
+        snmpRetriesCount, snmpTimeout, snmpUsername, snmpAuthProtocol, snmpAuthKey, \
+        snmpPrivProtocol, snmpPrivKey, ignorePingFlag, verbScanProgressFlag, \
+        scanResultsOutputFlag, forceOUIUpdateFlag = executor.submit(process_input, args).result()
 
 # Determinating output filepath
 reportsDirName = "reports"
