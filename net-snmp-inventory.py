@@ -10,6 +10,7 @@ __version__ = "0.2.3"
 __min_python__ = (3, 10)
 
 # Importing libraries
+from _multiprocessing import Process, Pool
 from copy import deepcopy
 from os import path, makedirs
 from sys import version_info, exit
@@ -22,7 +23,14 @@ from mac_vendor_lookup import MacLookup, BaseMacLookup
 from pysnmp.smi.rfc1902 import ObjectIdentity
 from ipaddress import IPv4Address, IPv4Network, IPv4Interface
 from netaddr import IPAddress
-import re, time, macaddress, platform, chardet
+import re, time, macaddress, platform, chardet, os, requests
+
+_env_variable = f'{__name__}-multiprocessing'
+if os.environ.get(_env_variable) is None:
+    os.environ[_env_variable] = True  # Child process will not now execute following code
+
+    # Create the processes:
+    import ImageAcquisition as ia
 
 # Check Python version
 if version_info < __min_python__:
@@ -886,3 +894,6 @@ for key in templatesDict:
 		flushMemContentToFile(outFilePath, outFileContent)
 
 print("\nDone!\n")
+
+if __name__ == "__main__":
+	run(parallel=True)_
